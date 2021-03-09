@@ -72,6 +72,13 @@ sub multiX {
   return $self->{'_sd'}->multiX($type);
 }
 
+
+sub multi_hash {
+  my ($self,$type) = @_;
+
+  return $self->{'_sd'}->multi_hash($type);
+}
+
 sub list_databases {
   my ($self,$species) = @_;
 

@@ -76,6 +76,9 @@ sub content {
 
   my %not_seen = $self->_get_all_analysed_species($cdb);
 
+  ## Get clustersets for strains
+  my $strain_clustersets = $hub->species_defs->multi_hash->{'DATABASE_COMPARA'}{'STRAIN_CLUSTERSETS'};
+
   # The %not_seen hash can either have the production name or species url as the code is shared across ensembl and all divisions of e!g.
   # These use either production name or species url, so difficult to find out what is used by the %not_seen hash.
   # In some case cases, such as pan compara, there can be a mix of production name and species url.
@@ -85,7 +88,7 @@ sub content {
 
   for (keys %not_seen) {
     #do not show non-strain species on strain view
-    if ($self->is_strain && !$species_defs->get_config($_, 'RELATED_TAXON')) {
+    if ($self->is_strain && !$strain_clustersets->{$species_defs->get_config($_, 'SPECIES_PRODUCTION_NAME')}) {
       delete $not_seen{$_};
       delete $not_seen{lc $_};
     }
@@ -100,15 +103,16 @@ sub content {
   foreach my $homology_type (@orthologues) {
     foreach my $species (keys %$homology_type) {
 
+      my $clusterset_id = $strain_clustersets->{$species_defs->get_config($species, 'SPECIES_PRODUCTION_NAME')};
       #do not show strain species on main species view
-      if ((!$self->is_strain && $species_defs->get_config($species, 'IS_STRAIN_OF')) || ($self->is_strain && !$species_defs->get_config($species, 'RELATED_TAXON'))) {
+      if ((!$self->is_strain && $species_defs->get_config($species, 'IS_STRAIN_OF')) || ($self->is_strain && !$clusterset_id)) {
         delete $not_seen{$species};
         delete $not_seen{lc $species};
         next;
       }
 
       # Skip strains that belongs to a different parent species
-      if($self->is_strain && $species_defs->get_config($species, 'RELATED_TAXON') ne $species_defs->RELATED_TAXON){
+      if($self->is_strain && $clusterset_id ne $strain_clustersets->{$species_defs->SPECIES_PRODUCTION_NAME}){
         delete $not_seen{$species};
         delete $not_seen{lc $species};
         next;

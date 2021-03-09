@@ -38,7 +38,8 @@ sub init_cacheable {
   my $self = shift;
   foreach ($self->species_defs->valid_species) {
     # complicated if statement which basically show/hide strain or main species depending on the view you are (when you are on a main species, do not show strain species and when you are on a strain species or strain view from main species, show only strain species)          
-    next if(($self->hub->action !~ /Strain_/ && $self->hub->species_defs->get_config($_,'IS_STRAIN_OF')) || (($self->hub->action =~ /Strain_/  || $self->hub->species_defs->IS_STRAIN_OF) && !$self->hub->species_defs->get_config($_, 'RELATED_TAXON')));
+    my $clustersets = $self->species_defs->multi_hash->{'DATABASE_COMPARA'}{'STRAIN_CLUSTERSETS'};
+    next if(($self->hub->action !~ /Strain_/ && $self->species_defs->get_config($_,'IS_STRAIN_OF')) || (($self->hub->action =~ /Strain_/  || $self->species_defs->IS_STRAIN_OF) && !$clustersets->{$self->species_defs->get_config($_, 'SPECIES_PRODUCTION_NAME')}));
     $self->set_default_options({ 'species_' . lc($_) => 'yes' });    
   }
 

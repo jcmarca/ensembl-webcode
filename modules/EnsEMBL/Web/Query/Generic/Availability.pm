@@ -85,6 +85,11 @@ sub alt_allele_group_adaptor {
   return $self->source('Adaptors')->alt_allele_group_adaptor($args->{'species'});
 }
 
+sub sd {
+  my $self = shift;
+  return $self->source('SpeciesDefs');
+}
+
 sub sd_config {
   my ($self,$args,$var) = @_;
 

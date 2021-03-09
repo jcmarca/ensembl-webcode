@@ -205,9 +205,12 @@ sub _counts {
   if($member) {
     $out->{'orthologs'} = $member->number_of_orthologues;
 
-    $out->{'strain_orthologs'} =  $self->sd_config($args,'RELATED_TAXON') ? $member->number_of_orthologues($self->sd_config($args,'RELATED_TAXON')) : 0;
+    my $clustersets = $self->sd->multi_hash->{'DATABASE_COMPARA'}{'STRAIN_CLUSTERSETS'};
+    my $clusterset_id = $clustersets->{$self->sd_config($args,'SPECIES_PRODUCTION_NAME')}; 
+
+    $out->{'strain_orthologs'} =  $clusterset_id ? $member->number_of_orthologues($clusterset_id) : 0;
     $out->{'paralogs'} = $member->number_of_paralogues;
-    $out->{'strain_paralogs'} =  $self->sd_config($args,'RELATED_TAXON') ? $member->number_of_paralogues($self->sd_config($args,'RELATED_TAXON')) : 0;
+    $out->{'strain_paralogs'} =  $clusterset_id ? $member->number_of_paralogues($clusterset_id) : 0;
     $out->{'families'} = $member->number_of_families;
   }
   my $alignments = $self->_count_alignments($args);
@@ -239,9 +242,14 @@ sub get {
   $out->{'gene'} = 1;
   $out->{'core'} = $args->{'type'} eq 'core';
   $out->{'has_gene_tree'} = $member ? $member->has_GeneTree : 0;
+    
   $out->{'can_r2r'} = $self->sd_config($args,'R2R_BIN');
-  if($self->sd_config($args,'RELATED_TAXON')) { #gene tree availability check for strain
-    $out->{'has_strain_gene_tree'} = $member ? $member->has_GeneTree($self->sd_config($args,'RELATED_TAXON')) : 0; #TODO: replace hardcoded species
+    
+  my $clustersets = $self->sd->multi_hash->{'DATABASE_COMPARA'}{'STRAIN_CLUSTERSETS'};
+  my $clusterset_id = $clustersets->{$self->sd_config($args,'SPECIES_PRODUCTION_NAME')};
+
+  if ($clusterset_id) { #gene tree availability check for strain
+    $out->{'has_strain_gene_tree'} = $member ? $member->has_GeneTree($clusterset_id) : 0; 
   }  
 
   if($out->{'can_r2r'}) {

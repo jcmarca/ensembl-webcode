@@ -34,11 +34,13 @@ sub get_details {
   my $self   = shift;
   my $cdb    = shift;
   my $object = shift || $self->object || $self->hub->core_object('gene');
+  my $species_defs = $self->hub->species_defs;
 
   my $member = $object->get_compara_Member($cdb);
   return (undef, '<strong>Gene is not in the compara database</strong>') unless $member;
 
-  my $strain_tree  = $self->hub->species_defs->get_config($self->hub->species,'RELATED_TAXON') if($self->is_strain || $self->hub->species_defs->IS_STRAIN_OF || $self->hub->param('strain'));
+  my $clustersets = $species_defs->multi_hash->{'DATABASE_COMPARA'}{'STRAIN_CLUSTERSETS'};
+  my $strain_tree  = $clustersets->{$species_defs->SPECIES_PRODUCTION_NAME} if ($self->is_strain || $species_defs->IS_STRAIN_OF || $self->hub->param('strain'));
   my $species_tree = $object->get_SpeciesTree($cdb, $strain_tree);  
   my $tree = $object->get_GeneTree($cdb,"", $strain_tree);
   return (undef, '<strong>Gene is not in a compara tree</strong>') unless $tree;
