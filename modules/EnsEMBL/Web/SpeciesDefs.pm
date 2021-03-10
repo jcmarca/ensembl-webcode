@@ -871,7 +871,7 @@ sub _parse {
     $config_packer->tree->{'STRAIN_GROUP'} = undef if $SiteDefs::NO_STRAIN_GROUPS;
     my $strain_group = $config_packer->tree->{'STRAIN_GROUP'};
     if ($strain_group) {
-      $config_packer->tree->{'IS_REFERENCE'} = 0 if ($strain_group ne $species);
+      $config_packer->tree->{'IS_REFERENCE'} = 0  if ($strain_group ne $species);
       if (!$config_packer->tree->{'IS_REFERENCE'}) {
         push @{$species_to_strains->{$strain_group}}, $config_packer->tree->{'SPECIES_URL'}; ## Key on actual URL, not production name
       }
@@ -1451,6 +1451,21 @@ sub species_label {
   }
   
   return $label;
+}
+
+sub parent_strain {
+## Work out if this is a strain of a reference species
+  my $self = shift;
+  my $species = shift || $self->species;
+
+  my $is_reference = $self->get_config($species, 'IS_REFERENCE');
+  return undef if $is_reference;
+
+  my $parent_prod_name = $self->get_config($species, 'STRAIN_GROUP');
+  return undef unless $parent_prod_name;
+
+  my $parent_strain = $self->production_name_mapping($parent_prod_name);
+  return $parent_strain;
 }
 
 sub production_name_lookup {
