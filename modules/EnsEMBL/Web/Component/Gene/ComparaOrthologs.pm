@@ -64,7 +64,7 @@ sub content {
   my $availability = $object->availability;
   my $is_ncrna     = ($object->Obj->biotype =~ /RNA/);
   my $species_name = $species_defs->GROUP_DISPLAY_NAME;
-  my $strain_url   = $species_defs->IS_STRAIN_OF ? "Strain_" : "";
+  my $strain_url   = $species_defs->parent_strain ? "Strain_" : "";
   my $strain_param = $self->is_strain ? ";strain=1" : ""; # initialize variable even if is_strain is falsy to avoid warnings
 
   my @orthologues = (
@@ -74,57 +74,46 @@ sub content {
   my %orthologue_list;
   my %skipped;
 
-  my %not_seen = $self->_get_all_analysed_species($cdb);
+  my %ok_species = $self->_get_all_analysed_species($cdb);
 
-  ## Get clustersets for strains
-  my $strain_clustersets = $hub->species_defs->multi_hash->{'DATABASE_COMPARA'}{'STRAIN_CLUSTERSETS'};
-
-  # The %not_seen hash can either have the production name or species url as the code is shared across ensembl and all divisions of e!g.
-  # These use either production name or species url, so difficult to find out what is used by the %not_seen hash.
+  # The %ok_species hash can either have the production name or species url as the code is shared across ensembl and all divisions of e!g.
+  # These use either production name or species url, so difficult to find out what is used by the %ok_species hash.
   # In some case cases, such as pan compara, there can be a mix of production name and species url.
   # Therefore, need to have two delete statements to make sure the species (with orthologues) get deleted properly.
-  delete $not_seen{$hub->species}; #deleting current species
-  delete $not_seen{lc($hub->species)};
+  delete $ok_species{$hub->species}; #deleting current species
+  delete $ok_species{$species_defs->SPECIES_PRODUCTION_NAME};
 
-  for (keys %not_seen) {
+  for (keys %ok_species) {
     #do not show non-strain species on strain view
-    if ($self->is_strain && !$strain_clustersets->{$species_defs->get_config($_, 'SPECIES_PRODUCTION_NAME')}) {
-      delete $not_seen{$_};
-      delete $not_seen{lc $_};
+    if ($_ eq $species_defs->parent_strain) {
+      delete $ok_species{$_};
+      delete $ok_species{$species_defs->get_config($_, 'SPECIES_PRODUCTION_NAME')};
     }
 
     #do not show strain species on main species view
-    if (!$self->is_strain && $species_defs->get_config($_, 'IS_STRAIN_OF')) {
-      delete $not_seen{$_};
-      delete $not_seen{lc $_};
+    if ($species_defs->parent_strain($_)) {
+      delete $ok_species{$_};
+      delete $ok_species{$species_defs->get_config($_, 'SPECIES_PRODUCTION_NAME')};
     }
   }
 
   foreach my $homology_type (@orthologues) {
     foreach my $species (keys %$homology_type) {
 
-      my $clusterset_id = $strain_clustersets->{$species_defs->get_config($species, 'SPECIES_PRODUCTION_NAME')};
-      #do not show strain species on main species view
-      if ((!$self->is_strain && $species_defs->get_config($species, 'IS_STRAIN_OF')) || ($self->is_strain && !$clusterset_id)) {
-        delete $not_seen{$species};
-        delete $not_seen{lc $species};
+      #do not show strain species on parent species view
+      if ($species_defs->parent_strain($species)) {
+        delete $ok_species{$species};
+        delete $ok_species{$species_defs->get_config($species, 'SPECIES_PRODUCTION_NAME')};
         next;
       }
-
-      # Skip strains that belongs to a different parent species
-      if($self->is_strain && $clusterset_id ne $strain_clustersets->{$species_defs->SPECIES_PRODUCTION_NAME}){
-        delete $not_seen{$species};
-        delete $not_seen{lc $species};
-        next;
-      } 
 
       $orthologue_list{$species} = {%{$orthologue_list{$species}||{}}, %{$homology_type->{$species}}};
       if($self->param('species_' . lc $species) eq 'off') {
         $skipped{$species}        += keys %{$homology_type->{$species}};
       }
 
-      delete $not_seen{$species};
-      delete $not_seen{lc $species};
+      delete $ok_species{$species};
+      delete $ok_species{$species_defs->get_config($species, 'SPECIES_PRODUCTION_NAME')};
     }
   }
 
@@ -353,14 +342,14 @@ sub content {
     );
   }   
 
-  if (%not_seen) {
+  if (%ok_species) {
     $html .= '<br /><a name="list_no_ortho"/>' . $self->_info(
       'Species without orthologues',
       sprintf(
         '<p><span class="no_ortho_count">%d</span> species are not shown in the table above because they don\'t have any orthologue with %s.<ul id="no_ortho_species">%s</ul></p> <input type="hidden" class="panel_type" value="ComparaOrtholog" />',
-        scalar(keys %not_seen),
+        scalar(keys %ok_species),
         $self->object->Obj->stable_id,
-        $self->get_no_ortho_species_html(\%not_seen, $sets_by_species)
+        $self->get_no_ortho_species_html(\%ok_species, $sets_by_species)
       ),
       undef,
       'no_ortho_message_pad'
@@ -373,11 +362,11 @@ sub content {
 sub export_options { return {'action' => 'Orthologs'}; }
 
 sub get_no_ortho_species_html {
-  my ($self, $not_seen, $sets_by_species) = @_;
+  my ($self, $ok_species, $sets_by_species) = @_;
   my $hub = $self->hub;
   my $no_ortho_species_html = '';
 
-  foreach (sort {lc $a cmp lc $b} keys %$not_seen) {
+  foreach (sort {lc $a cmp lc $b} keys %$ok_species) {
     if ($sets_by_species->{$_}) {
       $no_ortho_species_html .= '<li class="'. join(' ', @{$sets_by_species->{$_}}) .'">'. $hub->species_defs->species_label($_) .'</li>';
     }

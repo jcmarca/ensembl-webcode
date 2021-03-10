@@ -54,22 +54,22 @@ sub content {
   my $species   = $hub->species;
   my $type      = $hub->type;
   my $compara_db = $hub->database($cdb);
-  
+
   if ($type eq 'Location' && $slice->length > $threshold) {
     return $self->_warning(
       'Region too large',
       '<p>The region selected is too large to display in this view - use the navigation above to zoom in...</p>'
     );
   }
-  
+
   my $align_param = $hub->get_alignment_id;
 
   my ($align, $target_species, $target_slice_name_range) = split '--', $align_param;
   my $target_slice = $object->get_target_slice;
 
   my ($alert_box, $error) = $self->check_for_align_problems({
-                    'align' => $align,
-                    'species' => $hub->species_defs->IS_STRAIN_OF ? ucfirst $hub->species_defs->SPECIES_PRODUCTION_NAME($object->species) : $object->species,
+      'align' => $align,
+    'species' => $hub->species_defs->parent_strain($object->species) || $object->species,
                   });
   return $alert_box if $error;
   my ($warnings, $image_link);

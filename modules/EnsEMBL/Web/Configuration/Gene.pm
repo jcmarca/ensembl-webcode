@@ -36,7 +36,6 @@ sub populate_tree {
   my $self         = shift;
   my $hub          = $self->hub;
   my $species_defs = $hub->species_defs;
-  my $collapse     = $species_defs->IS_STRAIN_OF ? 0 : 1; # check if species is a strain
 
   my $summary_menu = $self->create_node('Summary', 'Summary',
     [qw(
@@ -143,7 +142,9 @@ sub populate_tree {
   
   # Compara menu for strain (strain menu available on main species but collapse, main menu not available/grey out/collapse on strain page)
   # The node key (Strain_) is used by Component.pm to determine if it is a strain link on the main species page, so be CAREFUL when changing this  
-  if ($species_defs->ALL_STRAINS || $species_defs->IS_STRAIN_OF) {  
+  my $is_strain = $species_defs->parent_strain ? 1 : 0;
+  my $collapse  = $is_strain ? 0 : 1;
+  if ($species_defs->ALL_STRAINS || $is_strain) {  
     my $strain_type = ucfirst $species_defs->STRAIN_TYPE;
     my $strain_compara_menu = $self->create_node('Strain_Compara', $strain_type.'s',
       [qw(strain_button_panel EnsEMBL::Web::Component::Gene::Compara_Portal)],

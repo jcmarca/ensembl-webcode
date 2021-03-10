@@ -40,7 +40,7 @@ sub get_details {
   return (undef, '<strong>Gene is not in the compara database</strong>') unless $member;
 
   my $clustersets = $species_defs->multi_hash->{'DATABASE_COMPARA'}{'STRAIN_CLUSTERSETS'};
-  my $strain_tree  = $clustersets->{$species_defs->SPECIES_PRODUCTION_NAME} if ($self->is_strain || $species_defs->IS_STRAIN_OF || $self->hub->param('strain'));
+  my $strain_tree  = $clustersets->{$species_defs->SPECIES_PRODUCTION_NAME} if ($self->is_strain || $self->hub->param('strain'));
   my $species_tree = $object->get_SpeciesTree($cdb, $strain_tree);  
   my $tree = $object->get_GeneTree($cdb,"", $strain_tree);
   return (undef, '<strong>Gene is not in a compara tree</strong>') unless $tree;

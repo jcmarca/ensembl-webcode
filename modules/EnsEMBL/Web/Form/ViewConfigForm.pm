@@ -551,8 +551,8 @@ sub add_species_fieldset {
 
   foreach (sort { ($a =~ /^<.*?>(.+)/ ? $1 : $a) cmp ($b =~ /^<.*?>(.+)/ ? $1 : $b) } keys %species) { 
     # complicated if statement which basically show/hide strain or main species depending on the view you are (when you are on a main species, do not show strain species and when you are on a strain species or strain view from main species, show only strain species)
-    next if ((!$hub->param('strain') && $species_defs->get_config($species{$_},'IS_STRAIN_OF')) 
-          || (($hub->param('strain') || $species_defs->IS_STRAIN_OF) 
+    next if ((!$hub->param('strain') && $species_defs->parent_strain($species{$_})) 
+          || (($hub->param('strain') || $species_defs->parent_strain) 
               && !$clustersets->{$species_defs->get_config($species{$_}, 'SPECIES_PRODUCTION_NAME')}
             )); 
     
