@@ -1348,7 +1348,28 @@ sub _summarise_compara_db {
     my ($species1, $species2) = ($row->[1], $row->[2]);
     $self->db_tree->{$db_name}{$key}{$species1}{$species2} = $valid_species{$species2};
   }             
-  
+
+  ## Get the clusterset id for strain homologues
+  foreach my $genome (keys %{$self->db_tree->{$db_name}{'COMPARA_SPECIES'}}) {
+    my $sth = $dbh->prepare(qq{
+      select clusterset_id 
+        from gene_tree_root as gtr, 
+          method_link_species_set as mlss, 
+          species_set as ss, 
+          genome_db as gd 
+        where gtr.method_link_species_set_id = mlss.method_link_species_set_id 
+          and mlss.species_set_id = ss.species_set_id 
+          and ss.genome_db_id = gd.genome_db_id 
+          and gd.name = ? limit 1;
+    });
+    $sth->bind_param(1,$genome);
+    $sth->execute();
+    my ($clusterset_id) = $sth->fetchrow_array;
+    ## Only strain groups have distinctive clusterset ids
+    next if (!$clusterset_id || $clusterset_id eq 'default');
+    $self->db_tree->{$db_name}{'STRAIN_CLUSTERSETS'}{$genome} = $clusterset_id;
+  }
+
   ###################################################################
   ## Cache MLSS for quick lookup in ImageConfig
 
