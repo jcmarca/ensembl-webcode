@@ -378,74 +378,71 @@ sub content {
       order       => 15,
     }); 
 
-    # FIXME - Quick hack to hide Wasabi for all strains trees. This should be removed once we have the HAL ready
-    if ($hub->referer->{ENSEMBL_ACTION} ne 'Strain_Compara_Tree') {
+    # Get wasabi files if found in session store
+    my $is_strain = $hub->species_defs->IS_STRAIN_OF ? 1 : 0;
+    my $gt_id               = $is_strain ? $gene->stable_id : $node->tree->stable_id;
+    my $is_ncrna            = ($node->tree->member_type eq 'ncrna');
+    $gt_id = $is_ncrna ? $hub->param('g') : $gt_id;
+    my $wasabi_session_key  = $gt_id . "_" . $node_id;
+    my $wasabi_session_data = $hub->session->get_data(type=>'tree_files', code => 'wasabi');
 
-      # Get wasabi files if found in session store
-      my $is_strain = $hub->species_defs->IS_STRAIN_OF ? 1 : 0;
-      my $gt_id               = $is_strain ? $gene->stable_id : $node->tree->stable_id;
-      my $is_ncrna            = ($node->tree->member_type eq 'ncrna');
-      $gt_id = $is_ncrna ? $hub->param('g') : $gt_id;
-      my $wasabi_session_key  = $gt_id . "_" . $node_id;
-      my $wasabi_session_data = $hub->session->get_data(type=>'tree_files', code => 'wasabi');
+    my ($alignment_file, $tree_file, $link);
+    if ($wasabi_session_data->{$wasabi_session_key}) {
+      $tree_file      = $wasabi_session_data->{$wasabi_session_key}->{tree};
 
-      my ($alignment_file, $tree_file, $link);
-      if ($wasabi_session_data->{$wasabi_session_key}) {
-        $tree_file      = $wasabi_session_data->{$wasabi_session_key}->{tree};
+      # Create wasabi url to load from their end
+      $link = sprintf (
+                        '/wasabi/wasabi.htm?tree=%s',
+                        uri_escape($hub->species_defs->ENSEMBL_BASE_URL . $tree_file)
+                      );
+    }
+    else {
+      my $rest_url = $hub->species_defs->ENSEMBL_REST_URL;
+      my $clustersets = $hub->species_defs->multi_hash->{'DATABASE_COMPARA'}{'STRAIN_CLUSTERSETS'};
 
-        # Create wasabi url to load from their end
-        $link = sprintf (
-                          '/wasabi/wasabi.htm?tree=%s',
-                          uri_escape($object->species_defs->ENSEMBL_BASE_URL . $tree_file)
-                        );
+      # Fall back to file generation if REST fails.
+      # To make it work for e! archives
+      $ua->timeout(10);
+
+      my $is_success = head($rest_url);
+      if ($is_success) {
+        $rest_url .= sprintf('/genetree/%sid/%s?content-type=text/javascript&aligned=1&subtree_node_id=%s&%s',
+                      ($is_strain or $is_ncrna) ? 'member/' : '',
+                      $gt_id,
+                      $node_id,
+                      $is_strain ? $clustersets->{$hub->species_defs->SPECIES_PRODUCTION_NAME} : '');
+
+        if ($hub->wasabi_status) {
+          $link = $hub->get_ExtURL('WASABI_ENSEMBL', {
+            'URL' => uri_escape($rest_url)
+          });
+        }
+          
       }
       else {
-        my $rest_url = $hub->species_defs->ENSEMBL_REST_URL;
+        my $filegen_url = $hub->url('Json', {
+                            type => 'GeneTree', 
+                            action => 'fetch_wasabi',
+                            node => $node_id, 
+                            gt => $gt_id, 
+                            treetype => 'json'
+                          });
 
-        # Fall back to file generation if REST fails.
-        # To make it work for e! archives
-        $ua->timeout(10);
-
-        my $is_success = head($rest_url);
-        if ($is_success) {
-          $rest_url .= sprintf('/genetree/%sid/%s?content-type=text/javascript&aligned=1&subtree_node_id=%s&%s',
-                        ($is_strain or $is_ncrna) ? 'member/' : '',
-                        $gt_id,
-                        $node_id,
-                        $is_strain ? 'clusterset_id=murinae' : '');
-
-          if ($hub->wasabi_status) {
-            $link = $hub->get_ExtURL('WASABI_ENSEMBL', {
-              'URL' => uri_escape($rest_url)
-            });
-          }
-          
-        }
-        else {
-          my $filegen_url = $hub->url('Json', {
-                              type => 'GeneTree', 
-                              action => 'fetch_wasabi',
-                              node => $node_id, 
-                              gt => $gt_id, 
-                              treetype => 'json'
-                            });
-
-          $link = sprintf (
-                            '/wasabi/wasabi.htm?filegen_url=%s',
-                            uri_escape($filegen_url)
-                          );
-        }
+        $link = sprintf (
+                          '/wasabi/wasabi.htm?filegen_url=%s',
+                          uri_escape($filegen_url)
+                        );
       }
-
-      # Wasabi Tree Link
-      $self->add_entry({
-        type       => 'View sub-tree',
-        label      => $link ? 'Wasabi viewer' : 'Not available' ,
-        link_class => 'popup',
-        order      => 16,
-        link       => $link || ''
-      });
     }
+
+    # Wasabi Tree Link
+    $self->add_entry({
+      type       => 'View sub-tree',
+      label      => $link ? 'Wasabi viewer' : 'Not available' ,
+      link_class => 'popup',
+      order      => 16,
+      link       => $link || ''
+    });
   }
 }
 
