@@ -46,7 +46,7 @@ sub init_cacheable {
         ($self->hub->action =~ /Strain_/  || $self->hub->species_defs->IS_STRAIN_OF) 
         && !$clustersets->{$self->species_defs->get_config($_, 'SPECIES_PRODUCTION_NAME')}
         )
-      ));
+      );
     $self->set_default_options({ 'species_' . lc($_) => 'yes' });    
   }
 
